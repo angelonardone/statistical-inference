@@ -1,0 +1,34 @@
+---
+title: "Statistical inference Project"
+author: "Mario Segal"
+date: "August 9, 2014"
+output: html_document
+---
+
+This is my Class Project for the Coursera Class of Statistical Inference, August 2014
+
+###Question A: Explore Exponential Distribution with Lambda = 0.2
+
+1. Repeatedly sample 40 exponential random numbers and plot their averages
+
+```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=TRUE,fig.align='center'}
+require(plyr);require(ggplot2);require(scales)
+n=40
+lambda=0.2
+samples=1000
+data <- data.frame(Measure="Sample Means",value=sapply(1:1000,function(x) mean(rexp(n,lambda))),stringsAsFactors=F)
+#data <- ddply(data,.(),mutate,calc=mean(value),theory=1/lambda)
+means<- data.frame(Type=c("Calculated Mean","Theoretical Mean"),mean=c(mean(data$value),1/lambda))
+sd_calc <- sd(data$value)
+title <- expression(paste("Sample Means for Exp. Dist. (",lambda, "=", "0.2",")",sep=""))
+ggplot(data,aes(x=value))+geom_histogram(alpha=0.6,fill="lightblue")+
+  theme_bw()+theme(legend.position="bottom")+ggtitle(title)+coord_cartesian(xlim=c(2,8))+
+  geom_vline(data=means,aes(xintercept=mean,color=Type,linetype=Type), show_guide = TRUE)+
+  guides(color=guide_legend(title=NULL),linetype=guide_legend(title=NULL))+
+  scale_y_continuous("Number of Observations",labels=comma)+
+  geom_line(data=NULL,aes(x=c(mean(data$value)-sd_calc/2,mean(data$value)+sd_calc/2),y=c(50,50)),color="black")
+```
+
+The figure above shows the distribution of means from 1,000 repeated samples of 40 exponential random numbers with $\lambda$ =0.2. The red line is the calculated average of the 1,000 sample means, while the blue line denotes the theoretical mean of an exponential distribution which is $\frac{1}{\lambda}$ = 5.
+The black horizontal line shows the calculated standard deviation of the sample means centered around the calculated sample mean which is equal to  `r round(sd_calc,2)`. According to the central limit theorem the standard deviation of the sample means is equal to the standard deviation of the actual distribution divided by $\sqrt{n}$, where n is the sample size (40 in this case), given that the estimated population standard deviation would be `r round(sd_calc*sqrt(n),2)` which is close to the theoretical value of $\frac{1}{\lambda}=5$
+As expected the distribution of sample means appears to be normal and centered around the distribution mean
