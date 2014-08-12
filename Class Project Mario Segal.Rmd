@@ -13,6 +13,7 @@ This is my Class Project for the Coursera Class of Statistical Inference, August
 
 ```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=TRUE,fig.align='center'}
 require(plyr);require(ggplot2);require(scales)
+set.seed(12345)
 n=40
 lambda=0.2
 samples=1000
@@ -29,6 +30,6 @@ ggplot(data,aes(x=value))+geom_histogram(alpha=0.6,fill="lightblue")+
   geom_line(data=NULL,aes(x=c(mean(data$value)-sd_calc/2,mean(data$value)+sd_calc/2),y=c(50,50)),color="black")
 ```
 
-The figure above shows the distribution of means from 1,000 repeated samples of 40 exponential random numbers with $\lambda$ =0.2. The red line is the calculated average of the 1,000 sample means, while the blue line denotes the theoretical mean of an exponential distribution which is $\frac{1}{\lambda}$ = 5.
+The figure above shows the distribution of means from 1,000 repeated samples of 40 exponential random numbers with $\lambda$ =0.2. The red line is the calculated average of the 1,000 sample means, while the blue line denotes the theoretical mean of an exponential distribution which is $\frac{1}{\lambda}$ = 5. The Caluclatd Mean is `r mean(data$value)` with a 95% confidence interval of `r mean(data$value)-sd_calc*1.96/sqrt(samples)` to `r mean(data$value)+sd_calc*1.96/sqrt(samples)`.
 The black horizontal line shows the calculated standard deviation of the sample means centered around the calculated sample mean which is equal to  `r round(sd_calc,2)`. According to the central limit theorem the standard deviation of the sample means is equal to the standard deviation of the actual distribution divided by $\sqrt{n}$, where n is the sample size (40 in this case), given that the estimated population standard deviation would be `r round(sd_calc*sqrt(n),2)` which is close to the theoretical value of $\frac{1}{\lambda}=5$
 As expected the distribution of sample means appears to be normal and centered around the distribution mean
