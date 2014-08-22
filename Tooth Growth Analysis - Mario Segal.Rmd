@@ -1,0 +1,85 @@
+---
+title: "Tooth Growth Analysis"
+author: "Mario Segal"
+date: "August 22, 2014"
+output: html_document
+---
+
+This is my Class Project for the Coursera Class of Statistical Inference, August 2014
+
+###Question B: Explore Tooth Growth Data
+```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+library(datasets);data(ToothGrowth)
+library(ggplot2)
+data <- ToothGrowth
+
+#load function to show 2 ggplots sode by side, from http://gettinggeneticsdone.blogspot.com/2010/03/arrange-multiple-ggplot2-plots-in-same.html. I modified the function to allow for adding a common title at the top
+
+require(grid)
+vp.layout <- function(x, y) viewport(layout.pos.row=x, layout.pos.col=y)
+arrange_ggplot2 <- function(..., nrow=NULL, ncol=NULL, as.table=FALSE) {
+  dots <- list(...)
+	n <- length(dots)
+	if(is.null(nrow) & is.null(ncol)) { nrow = floor(n/2) ; ncol = ceiling(n/nrow)}
+	if(is.null(nrow)) { nrow = ceiling(n/ncol)}
+	if(is.null(ncol)) { ncol = ceiling(n/nrow)}
+        ## NOTE see n2mfrow in grDevices for possible alternative
+grid.newpage()
+pushViewport(viewport(layout=grid.layout(nrow+1,ncol,heights = unit(c(0.5,5),"null")  ) ))
+	ii.p <- 1
+	for(ii.row in seq(1, nrow)){
+	ii.table.row <- ii.row	
+	if(as.table) {ii.table.row <- nrow - ii.table.row + 1}
+		for(ii.col in seq(1, ncol)){
+			ii.table <- ii.p
+			if(ii.p > n) break
+			print(dots[[ii.table]], vp=vp.layout(ii.table.row+1, ii.col))
+			ii.p <- ii.p + 1
+		}
+	}
+}
+
+ch1<-ggplot(data,aes(x=factor(dose),y=len,fill=factor(dose)))+geom_boxplot()+facet_wrap(~supp)+theme_bw()
+ch1 <- ch1+ theme(legend.position="none")+scale_x_discrete("Dosage in mg")+scale_y_continuous("Length of Teeth")
+
+ch2<-ggplot(data,aes(x=dose,y=len,color=supp,group=supp))+geom_point()+stat_smooth(method="lm",alpha=0.1)
+ch2 <-ch2+theme_bw()+theme(legend.justification=c(1,0),legend.position=c(1, 0))+scale_color_discrete("Supplement")
+ch2<-ch2+scale_x_continuous("Dosage in mg")+scale_y_continuous("Length of Teeth")
+```
+
+```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+library(dplyr);library(reshape2)
+
+#Load function to ceate a markdown table, from http://www.r-bloggers.com/writing-papers-using-r-markdown/
+tableCat <- function(inFrame) {
+     outText <- paste(names(inFrame), collapse = " | ")
+     outText <- c(outText, paste(rep("---", ncol(inFrame)), collapse = " | "))
+     invisible(apply(inFrame, 1, function(inRow) {
+         outText <<- c(outText, paste(inRow, collapse = " | "))
+     }))
+     return(outText)
+ }
+```
+###Summary of Tooth Growth Data
+```{r,results='asis',echo=T}
+aux <- data %.% group_by(supp,dose) %.% summarise(Mean=mean(len),Min=min(len),Max=max(len),"Std. Dev"=sd(len))
+aux2<-dcast(melt(aux,id.vars=c("supp","dose")),dose~supp+variable,fun.aggregate=sum)
+aux2<- round(aux2,2)
+names(aux2)[1] <- "Dosage"
+aux3<- tableCat(aux2)
+#cat(aux3, sep = "\n") #this line generates the table, it is on a separate chunk with echo=F
+```
+
+```{r,results='asis',echo=F}
+cat(aux3, sep = "\n") 
+```
+
+The table above shows some sumamru statistics for the Tooth Growth data. It suggest that orange juice is more effective at lower dosages but that bth supplements are similalry effective at the 2mg dose. It also suugests that Vitamon C has less variability in results for lower doses and more for the higher dose
+
+```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center',fig.width=10}
+arrange_ggplot2(ch1,ch2)
+grid.text("Exploratory Analysis for Tooth Growth Data", vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
+```
+The figure above shows the impact of the supplement and the dosage on the length of teeth of Guinea Pigs. The left panel shows the distributions (in boxplots) for the different combinations of supplement and dosage. The right panel shows a scatter plot of the data with linear regression fits of teeth length as a function of dosage for each supplement.
+Both Panels show that higher dosages appears to be related to longer teeth (however there appears there may be some diminishig returns for larger doeses of orange juice). It is also possible to see that fr dosage of 0.5 and 1 mg, orange Juice appears to be far superior, whereas Vitamin C could potentially lead to longer teeth at the 2mg dose.
+
