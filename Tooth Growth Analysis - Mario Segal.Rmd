@@ -9,12 +9,10 @@ This is my Class Project for the Coursera Class of Statistical Inference, August
 
 ###Question B: Explore Tooth Growth Data
 ```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
-library(datasets);data(ToothGrowth)
-library(ggplot2)
+library(datasets);data(ToothGrowth);library(ggplot2)
 data <- ToothGrowth
 
 #load function to show 2 ggplots sode by side, from http://gettinggeneticsdone.blogspot.com/2010/03/arrange-multiple-ggplot2-plots-in-same.html. I modified the function to allow for adding a common title at the top
-
 require(grid)
 vp.layout <- function(x, y) viewport(layout.pos.row=x, layout.pos.col=y)
 arrange_ggplot2 <- function(..., nrow=NULL, ncol=NULL, as.table=FALSE) {
@@ -38,10 +36,11 @@ pushViewport(viewport(layout=grid.layout(nrow+1,ncol,heights = unit(c(0.5,5),"nu
 		}
 	}
 }
+```
 
-ch1<-ggplot(data,aes(x=factor(dose),y=len,fill=factor(dose)))+geom_boxplot()+facet_wrap(~supp)+theme_bw()
-ch1 <- ch1+ theme(legend.position="none")+scale_x_discrete("Dosage in mg")+scale_y_continuous("Length of Teeth")
-
+```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+ch1<-ggplot(data,aes(x=factor(dose),y=len,fill=factor(dose)))+geom_boxplot(notch=T,notchwidth = 0.2)+theme_bw()
+ch1 <- ch1+facet_wrap(~supp)+ theme(legend.position="none")+scale_x_discrete("Dosage in mg")+scale_y_continuous("Length of Teeth")
 ch2<-ggplot(data,aes(x=dose,y=len,color=supp,group=supp))+geom_point()+stat_smooth(method="lm",alpha=0.1)
 ch2 <-ch2+theme_bw()+theme(legend.justification=c(1,0),legend.position=c(1, 0))+scale_color_discrete("Supplement")
 ch2<-ch2+scale_x_continuous("Dosage in mg")+scale_y_continuous("Length of Teeth")
@@ -60,7 +59,7 @@ tableCat <- function(inFrame) {
      return(outText)
  }
 ```
-###Summary of Tooth Growth Data
+###Summary of Tooth Growth Data and Exploratory Data Analysis
 ```{r,results='asis',echo=T}
 aux <- data %.% group_by(supp,dose) %.% summarise(Mean=mean(len),Min=min(len),Max=max(len),"Std. Dev"=sd(len))
 aux2<-dcast(melt(aux,id.vars=c("supp","dose")),dose~supp+variable,fun.aggregate=sum)
@@ -74,12 +73,120 @@ aux3<- tableCat(aux2)
 cat(aux3, sep = "\n") 
 ```
 
-The table above shows some sumamru statistics for the Tooth Growth data. It suggest that orange juice is more effective at lower dosages but that bth supplements are similalry effective at the 2mg dose. It also suugests that Vitamon C has less variability in results for lower doses and more for the higher dose
+The table above shows some sumamry statistics for the Tooth Growth data. It suggest that orange juice is more effective at lower dosages but that bth supplements are similalry effective at the 2mg dose. It also suugests that Vitamon C has less variability in results for lower doses and more for the higher dose
 
 ```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center',fig.width=10}
 arrange_ggplot2(ch1,ch2)
 grid.text("Exploratory Analysis for Tooth Growth Data", vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
 ```
-The figure above shows the impact of the supplement and the dosage on the length of teeth of Guinea Pigs. The left panel shows the distributions (in boxplots) for the different combinations of supplement and dosage. The right panel shows a scatter plot of the data with linear regression fits of teeth length as a function of dosage for each supplement.
+The figure above shows the impact of the supplement and the dosage on the length of teeth of Guinea Pigs. The left panel shows the distributions (in boxplots) for the different combinations of supplement and dosage, the fact that the boxplot notched do not overlap  is strong evidence that their medians are different and if we assume normality which is logical for bilogical patterns like growth that the means are different (as the median is the same as the mean for a noral distribution)
+The right panel shows a scatter plot of the data with linear regression fits of teeth length as a function of dosage for each supplement. 
 Both Panels show that higher dosages appears to be related to longer teeth (however there appears there may be some diminishig returns for larger doeses of orange juice). It is also possible to see that fr dosage of 0.5 and 1 mg, orange Juice appears to be far superior, whereas Vitamin C could potentially lead to longer teeth at the 2mg dose.
+
+###Compare Peformance and Dosage
+* Is Orange Juice more effective than Vitamin C?
+```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+t.test(len~supp,paired=F,var.equal=T,data=data,alternative="g")
+t.test(len~supp,paired=F,var.equal=F,data=data,alternative="g")
+```
+It appears from performing t-test (either with equal or unequal variance) that overall orange juice had a greater impact on tooth growth than Vitamin C as the confidence intervals do not contain zero
+
+* Does Dosage Matter?
+```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+results = data.frame(supplement=character(),dose_1=numeric(),dose_2=numeric(),ll=numeric(),
+                     ul=numeric(),pval=numeric(),variance_equal=logical(),test=character(),stringsAsFactors=F)
+k=1
+for (i in levels(data$supp)) {
+  for (j in unique(data$dose)) {
+    for (test in c("greater","less")) {
+      for (variance in c(T,F)) {
+        data1 <- subset(data,supp==i & dose!=j)
+        temp <- t.test(len~dose,paired=F,var.equal=variance,data=data1,alternative=test)
+        results[k,"supplement"] <- i; results[k,"dose_1"] <- unique(data1$dose)[1]; 
+        results[k,"dose_2"] <- unique(data1$dose)[2]; results[k,"ll"] <- temp$conf.int[1]
+        results[k,"ul"] <- temp$conf.int[2]; results[k,"pval"] <- temp$p.value
+        results[k,"variance_equal"] <- variance; results[k,"test"] <- test
+        k <- k+1
+      }
+    }
+  }
+}
+
+results$outcome <- ifelse(results$pval<=0.05,"Difference","No Difference")
+results[4:6] <- round(results[4:6],3)
+results2 <- subset(results,outcome=="Difference")
+results3 <- tableCat(results2)
+#cat(results3, sep = "\n") #this line generates the table, it is on a separate chunk with echo=F
+```
+
+```{r,results='asis',echo=F}
+cat(results3, sep = "\n") 
+```
+
+The table above shows the dosage comparisons for each supplement for which a statistical difference at 95% was observed. It shows that higher dosages are more effective that lower dosages for either supplement.
+
+* Which Supplement is Better at a Given Dosage?
+```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+results_a = data.frame(dose=numeric(),supplement1=character(),supplement2=character(),ll=numeric(),
+                     ul=numeric(),pval=numeric(),variance_equal=logical(),test=character(),stringsAsFactors=F)
+k=1
+for (j in unique(data$dose)) {
+    for (test in c("greater","less")) {
+      for (variance in c(T,F)) {
+        data1 <- subset(data, dose==j)
+        temp <- t.test(len~supp,paired=F,var.equal=variance,data=data1,alternative=test)
+        results_a[k,"supplement1"] <- levels(data1$supp)[1]; results_a[k,"supplement2"] <- levels(data1$supp)[2]
+        results_a[k,"dose"] <- j; results_a[k,"ll"] <- temp$conf.int[1]
+        results_a[k,"ul"] <- temp$conf.int[2]; results_a[k,"pval"] <- temp$p.value
+        results_a[k,"variance_equal"] <- variance; results_a[k,"test"] <- test
+        k <- k+1
+      }
+    }
+}
+
+results_a$outcome <- ifelse(results_a$pval<=0.05,"Difference","No Difference")
+results_a[4:6] <- round(results_a[4:6],3)
+results_a2 <- subset(results_a,outcome=="Difference")
+results_a3 <- tableCat(results_a2)
+#cat(results_a3, sep = "\n") #this line generates the table, it is on a separate chunk with echo=F
+```
+
+```{r,results='asis',echo=F}
+cat(results_a3, sep = "\n") 
+```
+
+The table above shows the supplement comparisons for each dosage for which a statistical difference at 95% was observed. It shows that orange juice is more effective at 0.5 and 1 mg but that both supplements are equally effecive at 2mg.
+
+* Which Dosage is Better?
+```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+results_b = data.frame(dose1=numeric(),dose2=numeric(),ll=numeric(),ul=numeric(),pval=numeric(),
+                       variance_equal=logical(),test=character(),stringsAsFactors=F)
+k=1
+for (j in unique(data$dose)) {
+    for (test in c("greater","less")) {
+      for (variance in c(T,F)) {
+        data1 <- subset(data, dose!=j)
+        temp <- t.test(len~dose,paired=F,var.equal=variance,data=data1,alternative=test)
+        results_b[k,"dose1"] <- unique(data1$dose)[1]; results_b[k,"dose2"] <- unique(data1$dose)[2]
+        results_b[k,"ll"] <- temp$conf.int[1]; results_b[k,"ul"] <- temp$conf.int[2]; 
+        results_b[k,"pval"] <- temp$p.value
+        results_b[k,"variance_equal"] <- variance; results_b[k,"test"] <- test
+        k <- k+1
+      }
+    }
+}
+
+results_b$outcome <- ifelse(results_b$pval<=0.05,"Difference","No Difference")
+results_b[3:5] <- round(results_b[3:5],3)
+results_b$difference <- ifelse(results_b$outcome=="Difference",T,F)
+results_b2 <- subset(results_b,outcome=="Difference")
+results_b3 <- tableCat(results_b2)
+#cat(results_b3, sep = "\n") #this line generates the table, it is on a separate chunk with echo=F
+```
+
+```{r,results='asis',echo=F}
+cat(results_b3, sep = "\n") 
+```
+
+The table above shows the comparisons across supplements for each dosage for which a statistical difference at 95% was observed. It shows that 2mg is superior.
 
