@@ -46,31 +46,15 @@ ch2 <-ch2+theme_bw()+theme(legend.justification=c(1,0),legend.position=c(1, 0))+
 ch2<-ch2+scale_x_continuous("Dosage in mg")+scale_y_continuous("Length of Teeth")
 ```
 
-```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
-library(dplyr);library(reshape2)
 
-#Load function to ceate a markdown table, from http://www.r-bloggers.com/writing-papers-using-r-markdown/
-tableCat <- function(inFrame) {
-     outText <- paste(names(inFrame), collapse = " | ")
-     outText <- c(outText, paste(rep("---", ncol(inFrame)), collapse = " | "))
-     invisible(apply(inFrame, 1, function(inRow) {
-         outText <<- c(outText, paste(inRow, collapse = " | "))
-     }))
-     return(outText)
- }
-```
 ###Summary of Tooth Growth Data and Exploratory Data Analysis
 ```{r,results='asis',echo=T}
+library(dplyr);library(reshape2);library(knitr)
 aux <- data %.% group_by(supp,dose) %.% summarise(Mean=mean(len),Min=min(len),Max=max(len),"Std. Dev"=sd(len))
 aux2<-dcast(melt(aux,id.vars=c("supp","dose")),dose~supp+variable,fun.aggregate=sum)
 aux2<- round(aux2,2)
 names(aux2)[1] <- "Dosage"
-aux3<- tableCat(aux2)
-#cat(aux3, sep = "\n") #this line generates the table, it is on a separate chunk with echo=F
-```
-
-```{r,results='asis',echo=F}
-cat(aux3, sep = "\n") 
+kable(aux2, format = "markdown")
 ```
 
 The table above shows some sumamry statistics for the Tooth Growth data. It suggest that orange juice is more effective at lower dosages but that bth supplements are similalry effective at the 2mg dose. It also suugests that Vitamon C has less variability in results for lower doses and more for the higher dose
@@ -86,13 +70,17 @@ Both Panels show that higher dosages appears to be related to longer teeth (howe
 ###Compare Peformance and Dosage
 * Is Orange Juice more effective than Vitamin C?
 ```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
-t.test(len~supp,paired=F,var.equal=T,data=data,alternative="g")
-t.test(len~supp,paired=F,var.equal=F,data=data,alternative="g")
+t.test(len~supp,paired=F,var.equal=T,data=data,alternative="g")$p.value
+t.test(len~supp,paired=F,var.equal=F,data=data,alternative="g")$p.value
+
+#adjusted values
+t.test(len~supp,paired=F,var.equal=T,data=data,alternative="g")$p.value*50
+t.test(len~supp,paired=F,var.equal=F,data=data,alternative="g")$p.value*50
 ```
-It appears from performing t-test (either with equal or unequal variance) that overall orange juice had a greater impact on tooth growth than Vitamin C as the confidence intervals do not contain zero
+It appears from performing t-test (either with equal or unequal variance) that overall orange juice had a greater impact on tooth growth than Vitamin C as the confidence intervals do not contain zero. However if we use the Bonferroni adjusted values we can't conclude that there is any difference in the 2 supplements
 
 * Does Dosage Matter?
-```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+```{r,echo=TRUE,results='asis',warning=F,message=F,tidy=F,fig.align='center'}
 results = data.frame(supplement=character(),dose_1=numeric(),dose_2=numeric(),ll=numeric(),
                      ul=numeric(),pval=numeric(),variance_equal=logical(),test=character(),stringsAsFactors=F)
 k=1
@@ -112,21 +100,18 @@ for (i in levels(data$supp)) {
   }
 }
 
+results$adj_pval <- results$pval*50
 results$outcome <- ifelse(results$pval<=0.05,"Difference","No Difference")
-results[4:6] <- round(results[4:6],3)
+results[c(4:6,9)] <- round(results[c(4:6,9)],3)
 results2 <- subset(results,outcome=="Difference")
-results3 <- tableCat(results2)
-#cat(results3, sep = "\n") #this line generates the table, it is on a separate chunk with echo=F
+results2 <- results2[,c(1:6,9,7,8,10)]
+kable(results2, format = "markdown")
 ```
 
-```{r,results='asis',echo=F}
-cat(results3, sep = "\n") 
-```
-
-The table above shows the dosage comparisons for each supplement for which a statistical difference at 95% was observed. It shows that higher dosages are more effective that lower dosages for either supplement.
+The table above shows the dosage comparisons for each supplement for which a statistical difference at 95% was observed. It shows that higher dosages are more effective that lower dosages for either supplement. However, when we use the Bonferroni adjustment for p-values (uisng n=50 as in general we coducted 50 comparisons), we can't conclude anymore that the 2mg dosage for oramge juice is more effective than the 1mg dosage
 
 * Which Supplement is Better at a Given Dosage?
-```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+```{r,echo=TRUE,results='asis',warning=F,message=F,tidy=F,fig.align='center'}
 results_a = data.frame(dose=numeric(),supplement1=character(),supplement2=character(),ll=numeric(),
                      ul=numeric(),pval=numeric(),variance_equal=logical(),test=character(),stringsAsFactors=F)
 k=1
@@ -144,21 +129,18 @@ for (j in unique(data$dose)) {
     }
 }
 
+results_a$adj_pval <- results_a$pval*50
 results_a$outcome <- ifelse(results_a$pval<=0.05,"Difference","No Difference")
-results_a[4:6] <- round(results_a[4:6],3)
+results_a[c(4:6,9)] <- round(results_a[c(4:6,9)],3)
 results_a2 <- subset(results_a,outcome=="Difference")
-results_a3 <- tableCat(results_a2)
-#cat(results_a3, sep = "\n") #this line generates the table, it is on a separate chunk with echo=F
+results_a2 <- results_a2[,c(1:6,9,7:8,10)]
+kable(results_a2, format = "markdown")
 ```
 
-```{r,results='asis',echo=F}
-cat(results_a3, sep = "\n") 
-```
-
-The table above shows the supplement comparisons for each dosage for which a statistical difference at 95% was observed. It shows that orange juice is more effective at 0.5 and 1 mg but that both supplements are equally effecive at 2mg.
+The table above shows the supplement comparisons for each dosage for which a statistical difference at 95% was observed. It shows that orange juice is more effective at 0.5 and 1 mg but that both supplements are equally effecive at 2mg. When we use the Bonferroni adjustment on the p-values, we can only conclude that orange juice is more effective at 1mg
 
 * Which Dosage is Better?
-```{r,echo=TRUE,results='hold',warning=F,message=F,tidy=F,fig.align='center'}
+```{r,echo=TRUE,results='asis',warning=F,message=F,tidy=F,fig.align='center'}
 results_b = data.frame(dose1=numeric(),dose2=numeric(),ll=numeric(),ul=numeric(),pval=numeric(),
                        variance_equal=logical(),test=character(),stringsAsFactors=F)
 k=1
@@ -175,18 +157,15 @@ for (j in unique(data$dose)) {
       }
     }
 }
-
+results_b$adj_pval <- results_b$pval*50
 results_b$outcome <- ifelse(results_b$pval<=0.05,"Difference","No Difference")
-results_b[3:5] <- round(results_b[3:5],3)
+results_b[c(3:5,8)] <- round(results_b[c(3:5,8)],3)
 results_b$difference <- ifelse(results_b$outcome=="Difference",T,F)
 results_b2 <- subset(results_b,outcome=="Difference")
-results_b3 <- tableCat(results_b2)
-#cat(results_b3, sep = "\n") #this line generates the table, it is on a separate chunk with echo=F
+results_b2 <- results_b2[c(1:5,8,6,7,9:10)]
+kable(results_b2, format = "markdown")
+
 ```
 
-```{r,results='asis',echo=F}
-cat(results_b3, sep = "\n") 
-```
-
-The table above shows the comparisons across supplements for each dosage for which a statistical difference at 95% was observed. It shows that 2mg is superior.
+The table above shows the comparisons across supplements for each dosage for which a statistical difference at 95% was observed. It shows that 2mg is superior to 1 and 0.5 mgs, and that 1mg is superior to 0.5 mg. The results are valid even if we use a Bonferroni adjustmnt on the p-values
 
