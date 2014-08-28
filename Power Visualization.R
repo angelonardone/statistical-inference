@@ -12,14 +12,14 @@ myplot <- function(sigma,mu0,mua,n,alpha) {
   g=g+scale_y_continuous("Probability/Power",labels=percent,breaks=seq(0,1,.05))+theme_bw()
   power=pnorm(mu0 + z * sigma/sqrt(n), mean = mua, sd = sigma/sqrt(n), lower.tail = FALSE)
   power=paste0(round(power*100,1),"%")
-  g=g+geom_text(x=36,y=.9,label=paste("Power = " ,power),color="red")
+  g=g+geom_text(x=34,y=.9,label=paste("Power = " ,power),color="red")
   g=g+scale_x_continuous("mu0/mua")
   g
 }
 
 
 
-manipulate(myplot(sigma,mu0,mua,n,alpha),sigma = slider(min = 1, max = 15,step = 1, initial = 4),
+manipulate(myplot(sigma,mu0,mua,n,alpha),alpha=slider(0.01,.2,step=0.01,initial=0.05),sigma = slider(min = 1, max = 15,step = 1, initial = 4),
            mu0=slider(25,36,step=1,initial=30),
-           mua=slider(25,36,step=1,initial=32),n=slider(10,100,step=2,initial=16),
-           alpha=slider(0.01,.2,step=0.01,initial=0.05))
+           mua=slider(25,36,step=1,initial=32),n=slider(10,100,step=2,initial=16)
+           )
